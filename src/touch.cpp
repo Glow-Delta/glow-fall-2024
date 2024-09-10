@@ -3,9 +3,10 @@
 #include <Wire.h>
 
 const uint8_t sensorCount = 3;
+const boolean Testmodus = false;
 
-// The Arduino pin connected to the XSHUT pin of each sensor.
-const uint8_t xshutPins[sensorCount] = {8, 9, 10};
+// The Arduino pin connected to the XSHUT pin of each sensor. The array consist out of an array where the sensor pin (value 0) is connected to a light pin (value 1)
+const uint8_t xshutPins[sensorCount][2] = {{8, 1}, {9, 2}, {10, 3}};
 
 int lastInput[sensorCount];
 
@@ -15,11 +16,16 @@ void setupTouch()
 {
   Wire.begin();
 
-  // Disable/reset all sensors by driving their XSHUT pins low.
+  // Disable/reset all sensors/lights by driving their XSHUT pins low.
   for (uint8_t i = 0; i < sensorCount; i++)
   {
-    pinMode(xshutPins[i], OUTPUT);
-    digitalWrite(xshutPins[i], LOW);
+    pinMode(xshutPins[i][0], OUTPUT);
+    digitalWrite(xshutPins[i][0], LOW);
+
+    if(Testmodus == true){
+      pinMode(xshutPins[i][1], OUTPUT);
+      digitalWrite(xshutPins[i][1], HIGH);
+    }
   }
 
   // Enable, initialize, and start each sensor, one by one.
@@ -28,7 +34,7 @@ void setupTouch()
     // Stop driving this sensor's XSHUT low. This should allow the carrier
     // board to pull it high. (We do NOT want to drive XSHUT high since it is
     // not level shifted.) Then wait a bit for the sensor to start up.
-    pinMode(xshutPins[i], INPUT);
+    pinMode(xshutPins[i][0], INPUT);
     delay(10);
 
     sensors[i].setTimeout(500);
@@ -36,8 +42,12 @@ void setupTouch()
     {
       Serial.print("Failed to detect and initialize sensor ");
       Serial.print(i);
-      while (1)
-        ;
+      //while (1)
+        //;
+    } else {
+      if(Testmodus == true){
+        digitalWrite(xshutPins[i][1], LOW);
+      }
     }
 
     // Each sensor must have its address changed to a unique value other than
@@ -56,11 +66,17 @@ int getSensorTriggerValue() {
       int16_t distance = sensors[i].read();
       
       // Check if the distance is within the trigger threshold (adjust threshold as needed)
-      if (distance < 1200) {
+      if (distance < 1100) {
         triggeredSensors++;
         lastInput[i] = true; 
+        if(Testmodus == true){
+          digitalWrite(xshutPins[i][1], HIGH);
+        }
       } else {
         lastInput[i] = false;
+        if(Testmodus == true){
+          digitalWrite(xshutPins[i][1], LOW);
+        }
       }
     } else {
       // Sensor not dataReady, use lastInput state
